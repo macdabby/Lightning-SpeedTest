@@ -14,6 +14,6 @@ class SpeedTest extends Page {
     }
 
     public function get() {
-        JS::addResource('SpeedTest.js', 'SpeedTest');
+        JS::add(['SpeedTest' => 'SpeedTest.js']);
     }
 }
