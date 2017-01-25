@@ -11,12 +11,19 @@
         container: null,
         pingTimes: 0,
         uploadData: false,
+        results: null,
         run: function() {
             self.container = $('#speed-test-results');
             self.container.html('');
             self.pingCount = 0;
             self.section = 'ping';
             self.pingTimes = 0;
+            self.results = {
+                ping: [],
+                avg_ping: null,
+                upload: {},
+                download: {},
+            };
             self.next();
         },
 
@@ -40,13 +47,15 @@
                                     var elapsed = new Date() - self.startTime - data.time;
                                     self.pingTimes += elapsed;
                                     self.pingCount++;
+                                    self.results.ping.push(elapsed);
                                     self.message('Ping: ' + elapsed + 'ms');
                                     self.next();
                                 }
                             });
                         }, 1000);
                     } else {
-                        self.message('Average Ping: ' + (self.pingTimes / self.pingCount).toFixed(1) + 'ms');
+                        self.results.avg_ping = (self.pingTimes / self.pingCount).toFixed(1);
+                        self.message('Average Ping: ' + self.results.avg_ping + 'ms');
                         self.section = 'upload';
                         self.next();
                     }
@@ -71,6 +80,10 @@
                         dataType: 'JSON',
                         success: function(data) {
                             var elapsed = new Date() - self.startTime - data.time;
+                            self.results.upload.size = self.uploadDataSize + 'MB';
+                            self.results.upload.time = (elapsed / 1000).toFixed(2) + 's';
+                            self.results.upload.speed = (self.uploadDataSize * 1024/(elapsed / 1000)).toFixed(2) + 'kb/sec';
+
                             self.message('Uploaded ' + self.uploadDataSize + ' MB: ' + (elapsed / 1000).toFixed(2) + 's');
                             self.message('Average upload speed: ' + (self.uploadDataSize * 1024/(elapsed / 1000)).toFixed(2) + 'kb/sec');
                             self.section = 'download';
@@ -89,11 +102,29 @@
                         dataType: 'text',
                         success: function(data) {
                             var elapsed = new Date() - self.startTime;
-                            self.message('Downloaded ' + self.downloadDataSize + ' MB: ' + (elapsed / 1000).toFixed(2) + 's');
-                            self.message('Average download speed: ' + (self.downloadDataSize * 1024/(elapsed / 1000)).toFixed(2) + 'kb/sec');
+                            self.results.download.size = self.downloadDataSize + 'MB';
+                            self.results.download.time = (elapsed / 1000).toFixed(2) + 's';
+                            self.results.download.speed = (self.downloadDataSize * 1024/(elapsed / 1000)).toFixed(2) + 'kb/sec';
+
+                            self.message('Downloaded ' + self.downloadDataSize + ' MB: ' + self.results.download.time);
+                            self.message('Average download speed: ' + self.results.download.speed);
+                            self.section = 'report';
+                            self.next();
                         }
                     });
                     break;
+                case 'report':
+                    $.ajax({
+                        url: '/api/speed-test',
+                        data: {
+                            action: 'report',
+                            report: self.results
+                        },
+                        type: 'POST',
+                        success: function() {
+                            self.message('COMPLETE!');
+                        }
+                    });
             }
         }
     };
